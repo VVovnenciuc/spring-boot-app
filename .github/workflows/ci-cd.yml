@@ -1,0 +1,53 @@
+name: CI/CD Spring Boot Docker 🚀
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout cod
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Setup Java 21
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      # Cache Maven (accelerare build)
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-m2-
+
+      # Build JAR (fără teste)
+      - name: Build with Maven
+        run: mvn clean package -DskipTests
+
+      # Build Docker image
+      - name: Build Docker image
+        run: docker build -t spring-boot-app:latest .
+
+      # (Opțional) Run container pentru smoke test
+      - name: Run container
+        run: |
+          docker run -d -p 8080:8080 --name test-app spring-boot-app:latest
+          sleep 10
+          curl http://localhost:8080/hi
+
+      # Cleanup
+      - name: Stop container
+        run: docker stop test-app
